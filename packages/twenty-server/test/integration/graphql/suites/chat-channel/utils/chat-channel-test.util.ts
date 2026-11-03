@@ -364,13 +364,16 @@ export const deleteChannelBehindStaleCache = async (channelId: string) => {
     }),
   );
 
+  const channelAccessService =
+    getAppProviderByClassName<AgentChatChannelAccessService>(
+      'AgentChatChannelAccessService',
+    );
+
   jest
-    .spyOn(
-      getAppProviderByClassName<AgentChatChannelAccessService>(
-        'AgentChatChannelAccessService',
-      ),
-      'assertChannelAccess',
-    )
+    .spyOn(channelAccessService, 'assertChannelAccess')
+    .mockResolvedValue(staleChannel);
+  jest
+    .spyOn(channelAccessService, 'assertCallerChannelAccess')
     .mockResolvedValue(staleChannel);
 };
 
