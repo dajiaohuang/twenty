@@ -115,7 +115,7 @@ export class AgentChatChannelGrantService {
             await this.replaceRuleGrantsInTransaction({
               transactionScope,
               workspaceId,
-              scope: { channelId },
+              scope: { channelIds: [channelId] },
             });
           },
         ),
@@ -148,7 +148,11 @@ export class AgentChatChannelGrantService {
     workspaceId: string;
     scope: AgentChatChannelGrantScope;
   }): Promise<void> {
-    if ('threadIds' in scope && !isNonEmptyArray(scope.threadIds)) {
+    if (
+      !isNonEmptyArray(
+        'threadIds' in scope ? scope.threadIds : scope.channelIds,
+      )
+    ) {
       return;
     }
 
@@ -181,7 +185,7 @@ export class AgentChatChannelGrantService {
       where:
         'threadIds' in scope
           ? { id: Any(scope.threadIds) }
-          : { channelId: scope.channelId },
+          : { channelId: Any(scope.channelIds) },
       withDeleted: true,
     });
     const ruleRoleIdsByChannelId = await this.findRuleRoleIdsByChannelId({
@@ -201,7 +205,7 @@ export class AgentChatChannelGrantService {
         rowCause: RecordShareRowCause.RULE,
         ...('threadIds' in scope
           ? { recordId: Any(scope.threadIds) }
-          : { sourceId: scope.channelId }),
+          : { sourceId: Any(scope.channelIds) }),
       },
     });
     const { obsoleteGrantIds, missingGrants } = diffAgentChatChannelRuleGrants({

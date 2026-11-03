@@ -288,6 +288,8 @@ import { AddCommandMenuItemAvailabilityCoreObjectNameFastInstanceCommand } from 
 import { AddApplicationRoleTargetFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-56/2-56-instance-command-fast-1793816136545-add-application-role-target';
 import { AddWorkspaceAssistantProfileSlowInstanceCommand } from 'src/database/commands/upgrade-version-command/2-56/2-56-instance-command-slow-1793810534548-add-workspace-assistant-profile';
 import { AddFieldMetadataOptionTableFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-56/2-56-instance-command-fast-1793814954654-add-field-metadata-option-table';
+import { AddRetainedApplicationToAgentChatChannelFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-56/2-56-instance-command-fast-1793889006484-add-retained-application-to-agent-chat-channel';
+import { AddRetainedApplicationIdToAgentChatChannelFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-56/2-56-instance-command-fast-1793889006485-add-retained-application-id-to-agent-chat-channel';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -578,4 +580,6 @@ export const INSTANCE_COMMANDS = [
   AddApplicationRoleTargetFastInstanceCommand,
   AddWorkspaceAssistantProfileSlowInstanceCommand,
   AddFieldMetadataOptionTableFastInstanceCommand,
+  AddRetainedApplicationToAgentChatChannelFastInstanceCommand,
+  AddRetainedApplicationIdToAgentChatChannelFastInstanceCommand,
 ];
