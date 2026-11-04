@@ -14,6 +14,7 @@ import { makeMetadataApiRequest } from 'test/integration/metadata/suites/utils/m
 import { destroyAgentChatThread } from 'test/integration/utils/destroy-agent-chat-thread.util';
 import { generateApplicationTokenPair } from 'test/integration/utils/generate-application-token-pair.util';
 import { getCoreRepository } from 'test/integration/utils/get-core-repository.util';
+import { removeAgentChatSnoozeEndJobs } from 'test/integration/utils/remove-agent-chat-snooze-end-jobs.util';
 
 import { ApplicationEntity } from 'src/engine/core-modules/application/application.entity';
 import { AgentChatChannelEntity } from 'src/engine/metadata-modules/agent-chat-channel/entities/agent-chat-channel.entity';
@@ -228,6 +229,10 @@ describe('Inbox channels for applications', () => {
     generalChannelId = await findGeneralChannelId();
   }, 180_000);
 
+  afterEach(() =>
+    removeAgentChatSnoozeEndJobs({ threadIds: createdThreadIds }),
+  );
+
   afterAll(async () => {
     await destroyCreatedThreads();
 
@@ -355,7 +360,7 @@ describe('Inbox channels for applications', () => {
     });
     expect(await readThreadParticipants(threadId)).toEqual(participantsBefore);
 
-    const snoozedUntil = new Date(Date.now() + 5_000);
+    const snoozedUntil = new Date(Date.now() + 30_000);
 
     assertGraphQLSuccessfulResponse(
       await makeMetadataApiRequest(
