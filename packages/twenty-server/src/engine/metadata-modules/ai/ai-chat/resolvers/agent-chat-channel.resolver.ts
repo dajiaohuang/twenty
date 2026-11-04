@@ -12,11 +12,8 @@ import { PermissionFlagType } from 'twenty-shared/constants';
 
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
-import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
 import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
-import { AuthApplication } from 'src/engine/decorators/auth/auth-application.decorator';
-import { AuthUserWorkspaceId } from 'src/engine/decorators/auth/auth-user-workspace-id.decorator';
 import { AuthWorkspaceMemberId } from 'src/engine/decorators/auth/auth-workspace-member-id.decorator';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import { AgentChatChannelDTO } from 'src/engine/metadata-modules/ai/ai-chat/dtos/agent-chat-channel.dto';
@@ -142,25 +139,15 @@ export class AgentChatChannelResolver {
 
   @Query(() => [AgentChatChannelDTO])
   @UseGuards(AccessPolicyGuard(AGENT_CHAT_CHANNEL_ACCESS_POLICY))
-  async agentChatChannels(
-    @AuthUserWorkspaceId({ allowUndefined: true })
-    userWorkspaceId: string | undefined,
-    @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
-    @AuthApplication({ allowUndefined: true })
-    callingApplication: FlatApplication | undefined,
-  ): Promise<AgentChatChannelDTO[]> {
-    const canManageChannels =
-      await this.permissionsService.userHasWorkspaceSettingPermission({
-        workspaceId,
-        userWorkspaceId,
-        setting: PermissionFlagType.AI_SETTINGS,
-        applicationId: callingApplication?.id,
-        agentId: undefined,
-      });
+  async agentChatChannels(): Promise<AgentChatChannelDTO[]> {
+    const authContext = getAgentInboxCallerAuthContextOrThrow();
 
     return this.channelService.findChannels({
-      authContext: getAgentInboxCallerAuthContextOrThrow(),
-      canManageChannels,
+      authContext,
+      canManageChannels: await this.permissionsService.hasPermissionFlag({
+        authContext,
+        setting: PermissionFlagType.AI_SETTINGS,
+      }),
     });
   }
 
