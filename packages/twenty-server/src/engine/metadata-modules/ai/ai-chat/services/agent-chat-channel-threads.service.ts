@@ -37,8 +37,7 @@ const IS_UNASSIGNED = 'thread."assigneeId" IS NULL';
 
 const NEEDS_INPUT = 'thread."pendingQuestionMessageId" IS NOT NULL';
 
-const HAS_WORKSPACE_MEMBER =
-  ':channelThreadsWorkspaceMemberId::uuid IS NOT NULL';
+const IS_WORKSPACE_MEMBER_UNREAD = `(:channelThreadsWorkspaceMemberId::uuid IS NOT NULL AND ${IS_UNREAD})`;
 
 type ReadableThreadsQuery = (readableThreads: {
   fromClause: string;
@@ -179,8 +178,8 @@ export class AgentChatChannelThreadsService {
               count(*) FILTER (WHERE ${STATUS.OPEN} AND ${IS_UNASSIGNED})::int AS "unassignedCount",
               count(*) FILTER (WHERE ${STATUS.SNOOZED})::int AS "snoozedCount",
               count(*) FILTER (WHERE ${STATUS.DONE})::int AS "doneCount",
-              COALESCE(bool_or(${HAS_WORKSPACE_MEMBER} AND ${STATUS.OPEN} AND ${IS_UNREAD}), false) AS "hasUnreadOpen",
-              COALESCE(bool_or(${STATUS.OPEN} AND ${IS_ASSIGNED_TO_ME} AND ${IS_UNREAD}), false) AS "hasUnreadAssignedToMe"
+              COALESCE(bool_or(${STATUS.OPEN} AND ${IS_WORKSPACE_MEMBER_UNREAD}), false) AS "hasUnreadOpen",
+              COALESCE(bool_or(${STATUS.OPEN} AND ${IS_ASSIGNED_TO_ME} AND ${IS_WORKSPACE_MEMBER_UNREAD}), false) AS "hasUnreadAssignedToMe"
             ${fromClause}
             AND thread."channelId" = ANY(:channelThreadsChannelIds::uuid[])
             GROUP BY thread."channelId"`,
