@@ -508,10 +508,9 @@ export class AgentChatThreadService {
     channelId: string | null;
   }): Promise<void> {
     const workspaceId = authContext.workspace.id;
-    const thread = await this.sharingService.getCallerThreadWithAccess({
+    const thread = await this.sharingService.getCallerWritableThreadOrThrow({
       authContext,
       threadId,
-      operationType: 'update',
     });
 
     if (isDefined(channelId)) {

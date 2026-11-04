@@ -213,14 +213,13 @@ export class AgentChatChannelThreadsService {
 
   // Row level permissions inlined as a subquery so filtering and paging stay one query
   private async queryReadableThreads<TRow extends Record<string, unknown>>({
-    authContext: callerAuthContext,
+    authContext,
     buildQuery,
   }: {
     authContext: AgentInboxCallerAuthContext;
     buildQuery: ReadableThreadsQuery;
   }): Promise<TRow[]> {
-    const authContext =
-      await this.sharingService.getCallerAuthContextOrThrow(callerAuthContext);
+    await this.sharingService.assertCallerHasAiPermissionOrThrow(authContext);
 
     const workspaceId = authContext.workspace.id;
     const workspaceMemberId = isUserAuthContext(authContext)

@@ -113,11 +113,11 @@ export class AgentChatThreadTriageService {
     const workspaceMemberId = isUserAuthContext(authContext)
       ? authContext.workspaceMemberId
       : null;
-    const threadBefore = await this.sharingService.getCallerThreadWithAccess({
-      authContext,
-      threadId,
-      operationType: 'update',
-    });
+    const threadBefore =
+      await this.sharingService.getCallerWritableThreadOrThrow({
+        authContext,
+        threadId,
+      });
 
     if (!isDefined(threadBefore.channelId)) {
       throw new AiException(

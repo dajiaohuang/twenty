@@ -21,9 +21,7 @@ import {
 } from 'twenty-shared/types';
 import { isDefined, isNonEmptyArray } from 'twenty-shared/utils';
 
-import { isOAuthOnlyApplication } from 'src/engine/core-modules/application/utils/is-oauth-only-application.util';
 import { isApplicationAuthContext } from 'src/engine/core-modules/auth/guards/is-application-auth-context.guard';
-import { isUserAuthContext } from 'src/engine/core-modules/auth/guards/is-user-auth-context.guard';
 import { type UserWorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { type AgentInboxCallerAuthContext } from 'src/engine/metadata-modules/ai/ai-chat/types/agent-inbox-caller-auth-context.type';
 import { buildRecordShareLockKey } from 'src/engine/permissions/record-share/utils/build-record-share-lock-key.util';
@@ -172,70 +170,76 @@ export class AgentChatSharingService {
   }: AgentChatThreadAccessArgs & {
     operationType: ObjectRecordsOperationType;
   }) {
-    return this.findThreadWithContextPermissions({
-      authContext: await this.getAuthContextOrThrow(args),
+    const authContext = await this.getAuthContextOrThrow(args);
+    const thread = await this.findThreadOrThrow(args);
+
+    await this.assertOperationAllowedForCallerOrThrow({
+      authContext,
       threadId: args.threadId,
       operationType,
     });
+
+    return thread;
   }
 
-  async getCallerThreadWithAccess({
+  async getCallerWritableThreadOrThrow({
     authContext,
     threadId,
-    operationType,
   }: {
     authContext: AgentInboxCallerAuthContext;
     threadId: string;
-    operationType: OperationType;
   }): Promise<AgentChatThreadWorkspaceEntity> {
-    return this.findThreadWithContextPermissions({
-      authContext: await this.getCallerAuthContextOrThrow(authContext),
-      threadId,
-      operationType,
-    });
-  }
+    await this.assertCallerHasAiPermissionOrThrow(authContext);
 
-  private async findThreadWithContextPermissions({
-    authContext,
-    threadId,
-    operationType,
-  }: {
-    authContext: AgentInboxCallerAuthContext;
-    threadId: string;
-    operationType: OperationType;
-  }): Promise<AgentChatThreadWorkspaceEntity> {
-    const thread = await this.threadRepository.findOne(
-      authContext.workspace.id,
-      {
-        where: { id: threadId },
-      },
-    );
-
-    if (!isDefined(thread)) {
-      return throwAgentChatThreadNotFound();
-    }
-
-    const isApplicationParticipant =
+    const workspaceId = authContext.workspace.id;
+    const [thread, isApplicationParticipant] = await Promise.all([
+      this.findThreadOrThrow({ workspaceId, threadId }),
       isApplicationAuthContext(authContext) &&
-      AGENT_CHAT_REPLY_OPERATION_TYPES.some(
-        (replyOperationType) => replyOperationType === operationType,
-      ) &&
-      (await this.doesApplicationParticipateInThread({
-        workspaceId: authContext.workspace.id,
-        applicationId: authContext.application.id,
-        threadId,
-      }));
+        this.doesApplicationParticipateInThread({
+          workspaceId,
+          applicationId: authContext.application.id,
+          threadId,
+        }),
+    ]);
 
-    if (isApplicationParticipant) {
-      return thread;
+    if (!isApplicationParticipant) {
+      await this.assertOperationAllowedForCallerOrThrow({
+        authContext,
+        threadId,
+        operationType: 'update',
+      });
     }
 
+    return thread;
+  }
+
+  private async findThreadOrThrow({
+    workspaceId,
+    threadId,
+  }: Pick<
+    AgentChatThreadAccessArgs,
+    'workspaceId' | 'threadId'
+  >): Promise<AgentChatThreadWorkspaceEntity> {
+    const thread = await this.threadRepository.findOne(workspaceId, {
+      where: { id: threadId },
+    });
+
+    return thread ?? throwAgentChatThreadNotFound();
+  }
+
+  private async assertOperationAllowedForCallerOrThrow({
+    authContext,
+    threadId,
+    operationType,
+  }: {
+    authContext: AgentInboxCallerAuthContext;
+    threadId: string;
+    operationType: OperationType;
+  }): Promise<void> {
     await this.workspaceOrmManager.executeInWorkspaceContext(
       () => this.assertOperationAllowed(threadId, operationType),
       authContext,
     );
-
-    return thread;
   }
 
   async findReadableThreadIds({
@@ -750,12 +754,9 @@ export class AgentChatSharingService {
   }
 
   async getAuthContextOrThrow(
-    args: Omit<AgentChatThreadAccessArgs, 'threadId'> & {
-      applicationId?: string | null;
-      agentId?: string;
-    },
+    args: Omit<AgentChatThreadAccessArgs, 'threadId'>,
   ) {
-    const memberAuthContext = await this.userAuthContextService
+    const authContext = await this.userAuthContextService
       .resolveWorkspaceMember(args)
       .catch((error: unknown) => {
         if (error instanceof AuthException) {
@@ -763,48 +764,19 @@ export class AgentChatSharingService {
         }
         throw error;
       });
-    const authContext = { ...memberAuthContext, agentId: args.agentId };
 
     await this.assertCallerHasAiPermissionOrThrow(authContext);
 
     return authContext;
   }
 
-  async getCallerAuthContextOrThrow(
-    authContext: AgentInboxCallerAuthContext,
-  ): Promise<AgentInboxCallerAuthContext> {
-    if (isUserAuthContext(authContext)) {
-      const isOAuthOnlyApplicationCaller =
-        isDefined(authContext.application) &&
-        isOAuthOnlyApplication(authContext.application);
-
-      return this.getAuthContextOrThrow({
-        workspaceId: authContext.workspace.id,
-        workspaceMemberId: authContext.workspaceMemberId,
-        applicationId: isOAuthOnlyApplicationCaller
-          ? undefined
-          : (authContext.application?.id ?? null),
-        agentId: authContext.agentId,
-      });
-    }
-
-    await this.assertCallerHasAiPermissionOrThrow(authContext);
-
-    return authContext;
-  }
-
-  private async assertCallerHasAiPermissionOrThrow(
+  async assertCallerHasAiPermissionOrThrow(
     authContext: AgentInboxCallerAuthContext,
   ): Promise<void> {
     if (
-      await this.permissionsService.userHasWorkspaceSettingPermission({
-        workspaceId: authContext.workspace.id,
-        userWorkspaceId: isUserAuthContext(authContext)
-          ? authContext.userWorkspaceId
-          : undefined,
+      await this.permissionsService.hasPermissionFlag({
+        authContext,
         setting: PermissionFlagType.AI,
-        applicationId: authContext.application?.id,
-        agentId: authContext.agentId,
       })
     ) {
       return;

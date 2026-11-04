@@ -14,10 +14,9 @@ export class AgentInboxAccessService {
     authContext: AgentInboxCallerAuthContext;
     threadId: string;
   }): Promise<void> {
-    await this.sharingService.getCallerThreadWithAccess({
+    await this.sharingService.getCallerWritableThreadOrThrow({
       authContext,
       threadId,
-      operationType: 'update',
     });
   }
 }
