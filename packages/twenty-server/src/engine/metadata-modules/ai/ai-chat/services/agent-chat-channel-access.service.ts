@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { RecordSharePrincipalType } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 
-import { isUserAuthContext } from 'src/engine/core-modules/auth/guards/is-user-auth-context.guard';
+import { PermissionsService } from 'src/engine/permissions/permissions.service';
 import { RecordSharePrincipalService } from 'src/engine/permissions/record-share/services/record-share-principal.service';
 import { AgentChatChannelMetadataService } from 'src/engine/metadata-modules/agent-chat-channel/services/agent-chat-channel-metadata.service';
 import { type FlatAgentChatChannelWithRoleIds } from 'src/engine/metadata-modules/agent-chat-channel/types/flat-agent-chat-channel-with-role-ids.type';
@@ -24,6 +24,7 @@ export class AgentChatChannelAccessService {
     private readonly channelMetadataService: AgentChatChannelMetadataService,
     private readonly recordSharePrincipalService: RecordSharePrincipalService,
     private readonly workspaceCacheService: WorkspaceCacheService,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   async findCallerAccessibleChannels(
@@ -67,30 +68,19 @@ export class AgentChatChannelAccessService {
   async findCallerRole(
     authContext: AgentInboxCallerAuthContext,
   ): Promise<FlatRole | undefined> {
-    const workspaceId = authContext.workspace.id;
+    const [principals, { flatRoleMaps }] = await Promise.all([
+      this.permissionsService.findPrincipalsWithRoles(authContext),
+      this.workspaceCacheService.getOrRecompute(authContext.workspace.id, [
+        'flatRoleMaps',
+      ]),
+    ]);
 
-    if (isUserAuthContext(authContext)) {
-      return this.findMemberRole({
-        workspaceId,
-        workspaceMemberId: authContext.workspaceMemberId,
-      });
-    }
-
-    const { defaultRoleId } = authContext.application;
-
-    if (!isDefined(defaultRoleId)) {
-      return undefined;
-    }
-
-    const { flatRoleMaps } = await this.workspaceCacheService.getOrRecompute(
-      workspaceId,
-      ['flatRoleMaps'],
-    );
-
-    return findFlatEntityByIdInFlatEntityMaps({
-      flatEntityId: defaultRoleId,
-      flatEntityMaps: flatRoleMaps,
-    });
+    return isDefined(principals)
+      ? findFlatEntityByIdInFlatEntityMaps({
+          flatEntityId: principals.mainPrincipal.roleId,
+          flatEntityMaps: flatRoleMaps,
+        })
+      : undefined;
   }
 
   private async findChannelOpenToRoleOrThrow({
