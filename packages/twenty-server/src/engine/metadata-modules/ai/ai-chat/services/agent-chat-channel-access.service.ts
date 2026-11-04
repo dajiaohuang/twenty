@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { RecordSharePrincipalType } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 
-import { PermissionsService } from 'src/engine/permissions/permissions.service';
+import { PermissionsPrincipalsService } from 'src/engine/permissions/principal/services/permissions-principals.service';
 import { RecordSharePrincipalService } from 'src/engine/permissions/record-share/services/record-share-principal.service';
 import { AgentChatChannelMetadataService } from 'src/engine/metadata-modules/agent-chat-channel/services/agent-chat-channel-metadata.service';
 import { type FlatAgentChatChannelWithRoleIds } from 'src/engine/metadata-modules/agent-chat-channel/types/flat-agent-chat-channel-with-role-ids.type';
@@ -24,7 +24,7 @@ export class AgentChatChannelAccessService {
     private readonly channelMetadataService: AgentChatChannelMetadataService,
     private readonly recordSharePrincipalService: RecordSharePrincipalService,
     private readonly workspaceCacheService: WorkspaceCacheService,
-    private readonly permissionsService: PermissionsService,
+    private readonly permissionsPrincipalsService: PermissionsPrincipalsService,
   ) {}
 
   async findCallerAccessibleChannels(
@@ -69,7 +69,7 @@ export class AgentChatChannelAccessService {
     authContext: AgentInboxCallerAuthContext,
   ): Promise<FlatRole | undefined> {
     const [principals, { flatRoleMaps }] = await Promise.all([
-      this.permissionsService.findPrincipalsWithRoles(authContext),
+      this.permissionsPrincipalsService.findPrincipalsWithRoles(authContext),
       this.workspaceCacheService.getOrRecompute(authContext.workspace.id, [
         'flatRoleMaps',
       ]),
