@@ -32,7 +32,7 @@ type ApplicationUnderTest = {
 };
 
 const CREATE_CHANNEL = parse(
-  `mutation CreateChannel($input: CreateAgentChatChannelInput!) { createAgentChatChannel(input: $input) { id name roleIds applicationId } }`,
+  `mutation CreateChannel($input: CreateAgentChatChannelInput!) { createAgentChatChannel(input: $input) { id name roleIds } }`,
 );
 
 const DELETE_CHANNEL = parse(
@@ -44,7 +44,7 @@ const CREATE_THREAD = parse(
 );
 
 const CHANNEL_CONVERSATIONS = parse(
-  `query Conversations($channelId: UUID!, $assignment: AgentChatChannelAssignmentFilter, $filter: AgentChatChannelThreadFilter) { agentChatChannelThreadIds(channelId: $channelId, assignment: $assignment, filter: $filter) { threadIds } agentChatChannelSummaries { channelId openCount mentionedCount assignedToMeCount assignedCount hasUnreadOpen } }`,
+  `query Conversations($channelId: UUID!, $assignment: AgentChatChannelAssignmentFilter, $filter: AgentChatChannelThreadFilter) { agentChatChannelThreadIds(channelId: $channelId, assignment: $assignment, filter: $filter) { threadIds } agentChatChannelSummaries { channelId openCount mentionedCount assignedToMeCount assignedCount hasUnreadOpen } agentChatChannels { id isAccessible } }`,
 );
 
 const MOVE_AND_MARK_THREAD_DONE = parse(
@@ -164,7 +164,7 @@ const destroyCreatedThreads = async () => {
   }
 };
 
-describe('Inbox channels managed by an application', () => {
+describe('Inbox channels for applications', () => {
   const createdChannelIds = new Set<string>();
   let channelReader: ApplicationUnderTest;
   let generalChannelId: string;
@@ -259,6 +259,12 @@ describe('Inbox channels managed by an application', () => {
       })
       .where('id = :threadId', { threadId })
       .execute();
+    await global.testDataSource
+      .createQueryBuilder()
+      .update(`${SCHEMA}.agentChatThreadParticipant`)
+      .set({ lastMentionedAt: new Date() })
+      .where('"threadId" = :threadId', { threadId })
+      .execute();
 
     const response = await makeMetadataApiRequest(
       { query: CHANNEL_CONVERSATIONS, variables: { channelId } },
@@ -277,6 +283,13 @@ describe('Inbox channels managed by an application', () => {
       assignedCount: 1,
       hasUnreadOpen: false,
     });
+    expect(response.body.data.agentChatChannels).toContainEqual({
+      id: channelId,
+      isAccessible: true,
+    });
+    expect(
+      response.body.data.agentChatChannels.map(({ id }: { id: string }) => id),
+    ).not.toContain(generalChannelId);
 
     for (const personalFilter of [
       { assignment: 'ASSIGNED_TO_ME' },
@@ -342,7 +355,7 @@ describe('Inbox channels managed by an application', () => {
     });
     expect(await readThreadParticipants(threadId)).toEqual(participantsBefore);
 
-    const snoozedUntil = new Date(Date.now() + 30_000);
+    const snoozedUntil = new Date(Date.now() + 5_000);
 
     assertGraphQLSuccessfulResponse(
       await makeMetadataApiRequest(
