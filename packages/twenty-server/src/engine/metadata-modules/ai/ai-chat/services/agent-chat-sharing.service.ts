@@ -28,12 +28,9 @@ import { type UserWorkspaceAuthContext } from 'src/engine/core-modules/auth/type
 import { type AgentInboxCallerAuthContext } from 'src/engine/metadata-modules/ai/ai-chat/types/agent-inbox-caller-auth-context.type';
 import { buildRecordShareLockKey } from 'src/engine/permissions/record-share/utils/build-record-share-lock-key.util';
 import { RecordShareException } from 'src/engine/permissions/record-share/record-share.exception';
-import { RecordPermissionReadOrmService } from 'src/engine/permissions/record-permission-orm/services/record-permission-read-orm.service';
 import { RecordShareStorageService } from 'src/engine/permissions/record-share/services/record-share-storage.service';
 import { RecordSharePrincipalService } from 'src/engine/permissions/record-share/services/record-share-principal.service';
 import { RecordSharingService } from 'src/engine/permissions/record-share/services/record-sharing.service';
-import { resolveRecordIdsSharedWithPrincipals } from 'src/engine/permissions/record-share/utils/resolve-record-ids-shared-with-principals.util';
-import { resolveRequiredRecordShareAccessLevels } from 'src/engine/permissions/record-share/utils/resolve-required-record-share-access-levels.util';
 import { UserWorkspaceAuthContextService } from 'src/engine/core-modules/user-workspace/services/user-workspace-auth-context.service';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { type AgentChatThreadAccessArgs } from 'src/engine/metadata-modules/ai/ai-chat/types/agent-chat-thread-access-args.type';
@@ -79,7 +76,6 @@ export class AgentChatSharingService {
     private readonly threadRepository: AgentHistoryRepository<AgentChatThreadWorkspaceEntity>,
     private readonly userAuthContextService: UserWorkspaceAuthContextService,
     private readonly recordShareStorageService: RecordShareStorageService,
-    private readonly recordPermissionReadOrmService: RecordPermissionReadOrmService,
     private readonly recordSharingService: RecordSharingService,
     private readonly workspaceCacheService: WorkspaceCacheService,
     private readonly permissionsService: PermissionsService,
@@ -150,30 +146,7 @@ export class AgentChatSharingService {
     );
   }
 
-  async isThreadWritableByRole({
-    workspaceId,
-    threadId,
-    roleId,
-  }: {
-    workspaceId: string;
-    threadId: string;
-    roleId: string;
-  }): Promise<boolean> {
-    const threadShares =
-      await this.recordPermissionReadOrmService.findRecordShares({
-        workspaceId,
-        objectMetadataId: (await this.getThreadObjectMetadata(workspaceId)).id,
-        recordIds: [threadId],
-      });
-
-    return resolveRecordIdsSharedWithPrincipals({
-      recordShares: threadShares,
-      principalIds: [roleId],
-      accessLevels: resolveRequiredRecordShareAccessLevels('update'),
-    }).has(threadId);
-  }
-
-  doesApplicationParticipateInThread({
+  private doesApplicationParticipateInThread({
     workspaceId,
     applicationId,
     threadId,
