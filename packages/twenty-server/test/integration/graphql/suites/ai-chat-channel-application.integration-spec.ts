@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { parse } from 'graphql';
 import { SystemPermissionFlag } from 'twenty-shared/constants';
-import { isDefined } from 'twenty-shared/utils';
+import { assertIsDefinedOrThrow, isDefined } from 'twenty-shared/utils';
 
 import { assertGraphQLSuccessfulResponse } from 'test/integration/graphql/utils/graphql-test-assertions.util';
 import { cleanupApplicationAndAppRegistration } from 'test/integration/metadata/suites/application/utils/cleanup-application-and-app-registration.util';
@@ -93,9 +93,7 @@ const setupApplicationUnderTestOrThrow = async ({
     }),
   ]);
 
-  if (!isDefined(defaultRoleId)) {
-    throw new Error('Application default role not found');
-  }
+  assertIsDefinedOrThrow(defaultRoleId);
 
   return { application, token, roleId: defaultRoleId };
 };
