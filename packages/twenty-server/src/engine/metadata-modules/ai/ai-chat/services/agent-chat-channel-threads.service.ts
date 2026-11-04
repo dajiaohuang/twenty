@@ -96,7 +96,7 @@ export class AgentChatChannelThreadsService {
       throwAgentChatChannelsUnavailable();
     }
 
-    await this.channelAccessService.assertCallerChannelAccess({
+    await this.channelAccessService.assertCallerChannelAccessOrThrow({
       authContext,
       channelId,
     });

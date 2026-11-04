@@ -515,7 +515,7 @@ export class AgentChatThreadService {
     });
 
     if (isDefined(channelId)) {
-      await this.channelAccessService.assertCallerChannelAccess({
+      await this.channelAccessService.assertCallerChannelAccessOrThrow({
         authContext,
         channelId,
       });

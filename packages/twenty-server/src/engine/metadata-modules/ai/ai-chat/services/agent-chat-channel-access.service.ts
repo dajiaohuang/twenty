@@ -50,7 +50,7 @@ export class AgentChatChannelAccessService {
     });
   }
 
-  async assertCallerChannelAccess({
+  async assertCallerChannelAccessOrThrow({
     authContext,
     channelId,
   }: {

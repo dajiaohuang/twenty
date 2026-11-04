@@ -373,7 +373,7 @@ export const deleteChannelBehindStaleCache = async (channelId: string) => {
     .spyOn(channelAccessService, 'assertChannelAccess')
     .mockResolvedValue(staleChannel);
   jest
-    .spyOn(channelAccessService, 'assertCallerChannelAccess')
+    .spyOn(channelAccessService, 'assertCallerChannelAccessOrThrow')
     .mockResolvedValue(staleChannel);
 };
 
