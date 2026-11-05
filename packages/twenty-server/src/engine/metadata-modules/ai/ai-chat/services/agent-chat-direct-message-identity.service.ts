@@ -1,4 +1,4 @@
-import { AgentChatDirectMessageRecordsService } from 'src/engine/metadata-modules/ai/ai-history/services/agent-chat-direct-message-records.service';
+import { AgentChatDirectMessageConversationPrivacyService } from 'src/engine/metadata-modules/ai/ai-history/services/agent-chat-direct-message-conversation-privacy.service';
 import { Injectable } from '@nestjs/common';
 import { isNonEmptyString } from '@sniptt/guards';
 import { IsNull } from 'typeorm';
@@ -33,7 +33,7 @@ export class AgentChatDirectMessageIdentityService {
     private readonly threadRepository: AgentHistoryRepository<AgentChatThreadWorkspaceEntity>,
     private readonly workspaceCacheService: WorkspaceCacheService,
     private readonly workspaceOrmManager: WorkspaceOrmManager,
-    private readonly directMessageRecordsService: AgentChatDirectMessageRecordsService,
+    private readonly directMessageConversationPrivacyService: AgentChatDirectMessageConversationPrivacyService,
     private readonly chatThreadService: AgentChatThreadService,
   ) {}
 
@@ -99,13 +99,15 @@ export class AgentChatDirectMessageIdentityService {
       () =>
         this.workspaceOrmManager.runInWorkspaceTransaction(
           async (transactionScope) => {
-            await this.directMessageRecordsService.share({
-              workspaceId,
-              transactionScope,
-              threadId,
-              objectName: 'agentChatThread',
-              recordIds: [threadId],
-            });
+            await this.directMessageConversationPrivacyService.makeConversationRecordsPrivateToPair(
+              {
+                workspaceId,
+                transactionScope,
+                threadId,
+                conversationObjectName: 'agentChatThread',
+                conversationRecordIds: [threadId],
+              },
+            );
             await transactionScope
               .getRepositoryWithoutPermissionChecks<AgentChatThreadWorkspaceEntity>(
                 'agentChatThread',
@@ -178,13 +180,15 @@ export class AgentChatDirectMessageIdentityService {
               }
 
               // TODO @bosiraphael let's make sure the sharing by a participant is not possible (if private, do not share with share permission), if RLS, nothing todo
-              await this.directMessageRecordsService.share({
-                workspaceId,
-                transactionScope,
-                threadId: createdThreadId,
-                objectName: 'agentChatThread',
-                recordIds: [createdThreadId],
-              });
+              await this.directMessageConversationPrivacyService.makeConversationRecordsPrivateToPair(
+                {
+                  workspaceId,
+                  transactionScope,
+                  threadId: createdThreadId,
+                  conversationObjectName: 'agentChatThread',
+                  conversationRecordIds: [createdThreadId],
+                },
+              );
 
               return createdThreadId;
             },
