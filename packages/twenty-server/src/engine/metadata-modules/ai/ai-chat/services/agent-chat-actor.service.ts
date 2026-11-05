@@ -6,7 +6,6 @@ import { isUserAuthContext } from 'src/engine/core-modules/auth/guards/is-user-a
 import { Injectable } from '@nestjs/common';
 import { PermissionFlagType } from 'twenty-shared/constants';
 import { isDefined } from 'twenty-shared/utils';
-import { AgentChatThreadConversationType } from 'src/engine/metadata-modules/ai/ai-history/enums/agent-chat-thread-conversation-type.enum';
 import { AgentMessageRole } from 'src/engine/metadata-modules/ai/ai-history/enums/agent-message-role.enum';
 import { AgentMessageStatus } from 'src/engine/metadata-modules/ai/ai-history/enums/agent-message-status.enum';
 import { AgentMessageWorkspaceEntity } from 'src/engine/metadata-modules/ai/ai-history/standard-objects/agent-message.workspace-entity';
@@ -18,6 +17,7 @@ import { UserWorkspaceAuthContextService } from 'src/engine/core-modules/user-wo
 import { PermissionsService } from 'src/engine/permissions/permissions.service';
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { type AgentChatSender } from 'src/engine/metadata-modules/ai/ai-chat/types/agent-chat-sender.type';
+import { type AgentChatAuthorizedConversation } from 'src/engine/metadata-modules/ai/ai-chat/types/agent-chat-authorized-conversation.type';
 import { resolveAgentChatMessageWorkspaceMemberIdOrThrow } from 'src/engine/metadata-modules/ai/ai-chat/utils/resolve-agent-chat-message-workspace-member-id-or-throw.util';
 import {
   AiException,
@@ -118,7 +118,7 @@ export class AgentChatActorService {
     return thread.workspaceMemberId;
   }
 
-  async authorize({
+  async resolveAuthorizedConversation({
     workspaceId,
     threadId,
     sender,
@@ -126,7 +126,7 @@ export class AgentChatActorService {
     workspaceId: string;
     threadId: string;
     sender: AgentChatSender;
-  }) {
+  }): Promise<AgentChatAuthorizedConversation> {
     const authContext = await this.userAuthContextService.resolve({
       workspaceId,
       ...sender,
@@ -164,12 +164,7 @@ export class AgentChatActorService {
         AiExceptionCode.THREAD_NOT_FOUND,
       );
     }
-    return {
-      authContext,
-      isDirectMessage:
-        thread.conversationType ===
-        AgentChatThreadConversationType.DIRECT_MESSAGE,
-    };
+    return { authContext, thread };
   }
 
   // a member with no role left cannot act in the chat nor run the calls they approve
@@ -269,11 +264,11 @@ export class AgentChatActorService {
         AiExceptionCode.MESSAGE_NOT_FOUND,
       );
     }
-    const authorization = await this.authorize({
+    const authorizedConversation = await this.resolveAuthorizedConversation({
       workspaceId,
       threadId,
       sender,
     });
-    return { message, sender, authorization };
+    return { message, sender, authorizedConversation };
   }
 }

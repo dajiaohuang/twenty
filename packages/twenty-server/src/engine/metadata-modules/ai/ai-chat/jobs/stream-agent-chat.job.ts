@@ -162,7 +162,7 @@ export class StreamAgentChatJob {
     }
 
     const turnId = data.existingTurnId;
-    const { sender, authorization, message } =
+    const { sender, authorizedConversation, message } =
       await this.actorService.authorizeJob({
         workspaceId: data.workspaceId,
         threadId: data.threadId,
@@ -193,7 +193,9 @@ export class StreamAgentChatJob {
       workspaceId: data.workspaceId,
       turnId,
       modelId: turnModelId,
-      createdBy: buildActorMetadataFromAuthContext(authorization.authContext),
+      createdBy: buildActorMetadataFromAuthContext(
+        authorizedConversation.authContext,
+      ),
       streamClaim: claim,
     });
 
@@ -223,8 +225,7 @@ export class StreamAgentChatJob {
           workspace,
           userWorkspaceId: data.userWorkspaceId,
           sender,
-          authorization,
-          threadId: data.threadId,
+          authorizedConversation,
           streamId: data.streamId,
           turnId,
           messages: data.messages,
@@ -257,7 +258,7 @@ export class StreamAgentChatJob {
                 event: {
                   type: 'user-credits-exhausted',
                   workspaceMemberId:
-                    authorization.authContext.workspaceMemberId,
+                    authorizedConversation.authContext.workspaceMemberId,
                   isFallingBackToWorkspaceCredits,
                   renewsAt: renewsAt.toISOString(),
                 },
@@ -299,7 +300,8 @@ export class StreamAgentChatJob {
       if (isDefined(finish.threadBefore)) {
         await this.agentChatService.notifyThreadUsageUpdated({
           threadBefore: finish.threadBefore,
-          workspaceMemberId: authorization.authContext.workspaceMemberId,
+          workspaceMemberId:
+            authorizedConversation.authContext.workspaceMemberId,
           workspaceId: data.workspaceId,
         });
       }

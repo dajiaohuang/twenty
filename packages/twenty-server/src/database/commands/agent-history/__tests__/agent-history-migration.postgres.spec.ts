@@ -220,7 +220,7 @@ const SCHEMA = getWorkspaceSchemaName(WORKSPACE_ID);
     };
     const conversationWriter = new AgentConversationWriterService(
       new AgentHistoryTransactionService(orm as never, {
-        isDirectMessageIdentityEnabled: jest.fn().mockResolvedValue(false),
+        findDirectMessagePairOfThread: jest.fn().mockResolvedValue(null),
         makeConversationRecordsPrivateToPair: jest
           .fn()
           .mockRejectedValue(
@@ -270,7 +270,7 @@ const SCHEMA = getWorkspaceSchemaName(WORKSPACE_ID);
       );
 
     const createQueueService = (messageRepository: typeof messages) =>
-      new AgentChatQueueService(turns, messageRepository, conversationWriter);
+      new AgentChatQueueService(messageRepository, conversationWriter);
 
     const createActorService = (messageRepository: typeof messages) =>
       new AgentChatActorService(
