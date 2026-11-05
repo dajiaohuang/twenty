@@ -18,6 +18,7 @@ import { UserWorkspaceAuthContextService } from 'src/engine/core-modules/user-wo
 import { PermissionsService } from 'src/engine/permissions/permissions.service';
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { type AgentChatSender } from 'src/engine/metadata-modules/ai/ai-chat/types/agent-chat-sender.type';
+import { type AgentChatAuthorizedConversation } from 'src/engine/metadata-modules/ai/ai-chat/types/agent-chat-authorized-conversation.type';
 import { resolveAgentChatMessageWorkspaceMemberIdOrThrow } from 'src/engine/metadata-modules/ai/ai-chat/utils/resolve-agent-chat-message-workspace-member-id-or-throw.util';
 import {
   AiException,
@@ -118,7 +119,7 @@ export class AgentChatActorService {
     return thread.workspaceMemberId;
   }
 
-  async authorize({
+  async resolveAuthorizedConversation({
     workspaceId,
     threadId,
     sender,
@@ -126,7 +127,7 @@ export class AgentChatActorService {
     workspaceId: string;
     threadId: string;
     sender: AgentChatSender;
-  }) {
+  }): Promise<AgentChatAuthorizedConversation> {
     const authContext = await this.userAuthContextService.resolve({
       workspaceId,
       ...sender,
@@ -164,12 +165,7 @@ export class AgentChatActorService {
         AiExceptionCode.THREAD_NOT_FOUND,
       );
     }
-    return {
-      authContext,
-      isDirectMessage:
-        thread.conversationType ===
-        AgentChatThreadConversationType.DIRECT_MESSAGE,
-    };
+    return { authContext, thread };
   }
 
   // a member with no role left cannot act in the chat nor run the calls they approve
@@ -269,11 +265,11 @@ export class AgentChatActorService {
         AiExceptionCode.MESSAGE_NOT_FOUND,
       );
     }
-    const authorization = await this.authorize({
+    const authorizedConversation = await this.resolveAuthorizedConversation({
       workspaceId,
       threadId,
       sender,
     });
-    return { message, sender, authorization };
+    return { message, sender, authorizedConversation };
   }
 }
