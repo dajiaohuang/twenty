@@ -234,7 +234,7 @@ export class AgentChatSharingService {
   }: {
     authContext: AgentInboxCallerAuthContext;
     threadId: string;
-    operationType: OperationType;
+    operationType: ObjectRecordsOperationType;
   }): Promise<void> {
     await this.workspaceOrmManager.executeInWorkspaceContext(
       () => this.assertOperationAllowed(threadId, operationType),
