@@ -5,14 +5,17 @@ import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadat
 import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
 import { SingleRecordPickerLoadingEffect } from '@/object-record/record-picker/single-record-picker/components/SingleRecordPickerLoadingEffect';
 import { SingleRecordPickerMenuItems } from '@/object-record/record-picker/single-record-picker/components/SingleRecordPickerMenuItems';
+import { usePreselectFirstMatchingRecordOnSearch } from '@/object-record/record-picker/single-record-picker/hooks/usePreselectFirstMatchingRecordOnSearch';
 import { useSingleRecordPickerRecords } from '@/object-record/record-picker/single-record-picker/hooks/useSingleRecordPickerRecords';
 import { useSingleRecordPickerSearch } from '@/object-record/record-picker/single-record-picker/hooks/useSingleRecordPickerSearch';
 import { SingleRecordPickerComponentInstanceContext } from '@/object-record/record-picker/single-record-picker/states/contexts/SingleRecordPickerComponentInstanceContext';
 import { singleRecordPickerSearchFilterComponentState } from '@/object-record/record-picker/single-record-picker/states/singleRecordPickerSearchFilterComponentState';
+import { getSingleRecordPickerSelectableListId } from '@/object-record/record-picker/single-record-picker/utils/getSingleRecordPickerSelectableListId';
 import { canCreateRecordsForObjectMetadataItem } from '@/object-record/utils/canCreateRecordsForObjectMetadataItem';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { DropdownMenuSearchInput } from '@/ui/layout/dropdown/components/DropdownMenuSearchInput';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
+import { useSelectableList } from '@/ui/layout/selectable-list/hooks/useSelectableList';
 import { useAvailableComponentInstanceIdOrThrow } from '@/ui/utilities/state/component-state/hooks/useAvailableComponentInstanceIdOrThrow';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
 import { isDefined } from 'twenty-shared/utils';
@@ -51,6 +54,21 @@ export const SingleRecordPickerMenuItemsWithSearch = ({
   } = useSingleRecordPickerRecords({
     objectNameSingulars,
     excludedRecordIds,
+  });
+
+  const selectableListInstanceId = getSingleRecordPickerSelectableListId(
+    recordPickerInstanceId,
+  );
+  const { setSelectedItemId } = useSelectableList(selectableListInstanceId);
+  const firstMatchingRecordId = pickableMorphItems.find(
+    (morphItem) => morphItem.isMatchingSearchFilter,
+  )?.recordId;
+
+  usePreselectFirstMatchingRecordOnSearch({
+    searchFilter: singleRecordPickerSearchFilter,
+    firstMatchingRecordId:
+      emptyLabel && !loading ? firstMatchingRecordId : undefined,
+    preselect: setSelectedItemId,
   });
 
   const { objectMetadataItems: allObjectMetadataItems } =
